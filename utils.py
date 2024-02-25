@@ -80,14 +80,14 @@ class MoleculeUtils:
         # Create a adjacency matrix
         mol_adj = Chem.GetAdjacencyMatrix(mol)
         row_num = len(mol_adj)
-        adj = np.array(mol_adj, dtype=np.int)
+        adj = np.array(mol_adj, dtype=np.int32)
         # Set diagonal elements to 1, fill others with the adjacency matrix from RDkit
         for i in range(row_num):
             adj[i][i] = int(1)
         # Create a feature matrix
         feature = [atom_features(atom, degree_dim=17) for atom in mol.GetAtoms()]
         for _ in range(atom_num_limit - len(feature)):
-            feature.append(np.zeros(len(feature[0]), dtype=np.int))
+            feature.append(np.zeros(len(feature[0]), dtype=np.int32))
 
         obj = {
             "feature": np.asarray([feature]),
