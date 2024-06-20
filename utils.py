@@ -532,7 +532,9 @@ def get_default_config():
         "intermediate_material": None,
         "template_scores": None,
         "save_result_dir": "result",
-        "target": "data/sample.mol"
+        "target": "data/sample.mol",
+        "cum_prob_thresh": 0.9,
+        "cum_prob_mod": False
     }
     return config
 

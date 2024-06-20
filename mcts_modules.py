@@ -6,6 +6,9 @@ from pathlib import Path
 import random
 from statistics import mean
 from rdkit import Chem
+from PIL import Image, ImageDraw
+from rdkit.Chem import Draw
+
 
 from utils import MoleculeUtils, ReactionUtils, SearchUtils, get_node_info
 #from visualization import create_images, create_html_file
@@ -271,31 +274,126 @@ def save_route(nodes, save_dir, is_proven, ws):
     # create_html_file(save_dir, len(mols_nodes), len(rxns), f"{name_stem}.html")
 
 
-def print_route(nodes, is_proven, logger):
+
+
+
+
+
+
+
+
+    
+def print_route_HTML(nodes, is_proven, logger, route_num, smiles, route_id, json_weights, save_tree, expansion_num, cum_prob_mod, chem_axon, selection_constant, time_limit, csrf_token, image_dir="/var/www/html/public/images"):
     """ Print the searched route
     Args:
         nodes (list[Node]): List of reaction route nodes.
         is_proven (Boolean): Reaction route search has done or not.
         logger (logging.Logger): Logger
+        image_dir (str): Directory to save images.
+        route_id (int): The current route number.
+        json_weights: knowledge_weights in JSON format
     """
+    
+    if not os.path.exists(image_dir):
+        os.makedirs(image_dir)
 
+    
+    
+    
     message = "Reaction route search done." if is_proven else "[INFO] Can't find any route..."
-    logger.info(message)
+
     route_summary = ""
-    route_summary += "\n\n################### Starting Material(s) ###################"
+    route_summary += f"""<div class='route' data-smiles="{smiles}" data-route-id="{route_id}" data-route-num="{route_num}" data-knowledge-weights="{json_weights}" data-save-tree="{save_tree}" data-expansion-num="{expansion_num}" data-cum-prob-mod="{cum_prob_mod}" data-chem-axon="{chem_axon}" data-selection-constant="{selection_constant}" data-time-limit="{time_limit}"><div class="route-header" onclick="toggleRoute(this);"><h2>Route {route_id}</h2><h5>{message}</h5></div><div class="route-body">"""
+    
+
+    first_node_label = " (Starting Material(s))"
+    last_node_label = " (Target Molecule)"
+    total_nodes = len(nodes)
+
     rxn_rule = None
     idx = -1
-    for node in nodes:
-        route_summary += (f"\n------ Visit frequency to node: {node.visits} --------\n"
-                          f"The total score: {node.total_scores / node.visits}\n"
-                          f"The node depth: {node.depth}\n")
+    
+
+    for node_index, node in enumerate(nodes):
+        
+        node_label = ""
+        if node_index == 0:
+            node_label = first_node_label
+        elif node_index == total_nodes - 1:
+            node_label = last_node_label
+
+            
+        route_summary += (f"""<p>------ Visit frequency to node: {node.visits} --------\n"""
+                        f"""The total score: {node.total_scores / node.visits}\n"""
+                        f"""The node depth: {node.depth}{node_label}</p>""")
+        
+
         if rxn_rule is not None:
-            route_summary += f'[INFO] Apply reverse reaction rule: {rxn_rule}\n'
+            route_summary += f"""<p> Apply reverse reaction rule: {rxn_rule}</p>"""
         rxn_rule = node.state.rxn_rule
         if idx != -1:
-            route_summary += f"[INFO] Reaction applied molecule index: {idx}\n"
+            route_summary += f"""<p> Reaction applied molecule index: {idx + 1}</p>"""
         idx = node.state.rxn_applied_mol_idx
-        for i in range(len(node.state.mols)):
-            route_summary += f"{i}: {Chem.MolToSmiles(node.state.mols[i])}\n"
-    route_summary += "###################### Target Molecule #####################\n"
+
+        
+        route_summary += f"""<div class=structure-img>"""
+
+
+
+
+        current_depth_smiles = [Chem.MolToSmiles(mol) for mol in node.state.mols]
+        if node_index + 1 < len(nodes):
+            next_depth_smiles = [Chem.MolToSmiles(mol) for mol in nodes[node_index + 1].state.mols]
+        else:
+            next_depth_smiles = []
+
+
+        num_reactants = 0
+        for reactant_index, mol in enumerate(node.state.mols):
+            if Chem.MolToSmiles(mol) not in next_depth_smiles:
+                reactant_id = reactant_index + 1
+                image_path = os.path.join(image_dir, f"route_{route_id}_node_{node.depth}_reactant_{reactant_id}.png")
+                img = Draw.MolToImage(mol, size=(100, 100))
+                img.save(image_path) 
+                if num_reactants > 0:
+                    route_summary += f"""<div class="plus">plus.png</div>"""
+                route_summary += f"""<div class="molecule">{reactant_id}: {image_path}<p>{reactant_id}</p></div>"""
+                num_reactants += 1
+
+        if node_index + 1 < len(nodes): 
+            route_summary += f"""<div class="arrow">arrow.png</div>"""
+            for i, mol in enumerate(nodes[node_index + 1].state.mols):
+                if Chem.MolToSmiles(mol) not in current_depth_smiles:
+                    product_id = i + 1
+                    image_path = os.path.join(image_dir, f"route_{route_id}_node_{node.depth - 1}_product_{product_id}.png")
+                    img = Draw.MolToImage(mol, size=(100, 100))
+                    # img = img.convert("RGBA")
+                    # draw = ImageDraw.Draw(img)
+                    # draw.rectangle([(0, 0), img.size], outline="blue", width=5)
+                    img.save(image_path) 
+                    route_summary += f"""<div class="molecule">{product_id}: {image_path}<p>{product_id}</p></div>"""
+            
+
+
+        route_summary += f"</div>"
+    
+    # for i, node in enumerate(nodes):
+    #     if i + 1 < len(nodes):
+    #         current_depth_smiles = [Chem.MolToSmiles(mol) for mol in node.state.mols]
+    #         for j, mol in enumerate(nodes[i + 1].state.mols):
+    #             if Chem.MolToSmiles(mol) in current_depth_smiles:
+    #                 index = j + 1
+    #                 image_path = os.path.join(image_dir, f"route_{route_id}_node_{nodes[i + 1].depth}_mol_{index}.png")
+    #                 img = Draw.MolToImage(mol, size=(100, 100))
+    #                 img = img.convert("RGBA")
+    #                 draw = ImageDraw.Draw(img)
+    #                 draw.rectangle([(5, 5), (img.size[0]-5, img.size[1]-5)], outline="blue", width=1)
+    #                 img.save(image_path)
+
+
+    route_summary += f"""<div class="route-footer"><form action="addFavorite" method="POST" class="favorite-form"><input type="hidden" name="_token" value="{csrf_token}"><input type="hidden" name="smiles" value="{smiles}"><input type="hidden" name="route_id" value="{route_id}"><input type="hidden" name="route_num" value="{route_num}"><input type="hidden" name="knowledge_weights" value="{json_weights}"><input type="hidden" name="save_tree" value="{save_tree}"><input type="hidden" name="expansion_num" value="{expansion_num}"><input type="hidden" name="cum_prob_mod" value="{cum_prob_mod}"><input type="hidden" name="chem_axon" value="{chem_axon}"><input type="hidden" name="selection_constant" value="{selection_constant}"><input type="hidden" name="time_limit" value="{time_limit}"><button type="submit" class="btn btn-primary favorite-button">お気に入りに追加</button></form></div>"""
+    route_summary += f"""</div></div>"""
     logger.info(route_summary)
+
+    
+    
