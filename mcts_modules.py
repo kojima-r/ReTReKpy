@@ -275,7 +275,34 @@ def save_route(nodes, save_dir, is_proven, ws):
 
 
 
+def print_route_log(nodes, is_proven, logger):
+    """ Print the searched route
+    Args:
+        nodes (list[Node]): List of reaction route nodes.
+        is_proven (Boolean): Reaction route search has done or not.
+        logger (logging.Logger): Logger
+    """
 
+    message = "Reaction route search done." if is_proven else "[INFO] Can't find any route..."
+    logger.info(message)
+    route_summary = ""
+    route_summary += "\n\n################### Starting Material(s) ###################"
+    rxn_rule = None
+    idx = -1
+    for node in nodes:
+        route_summary += (f"\n------ Visit frequency to node: {node.visits} --------\n"
+                          f"The total score: {node.total_scores / node.visits}\n"
+                          f"The node depth: {node.depth}\n")
+        if rxn_rule is not None:
+            route_summary += f'[INFO] Apply reverse reaction rule: {rxn_rule}\n'
+        rxn_rule = node.state.rxn_rule
+        if idx != -1:
+            route_summary += f"[INFO] Reaction applied molecule index: {idx}\n"
+        idx = node.state.rxn_applied_mol_idx
+        for i in range(len(node.state.mols)):
+            route_summary += f"{i}: {Chem.MolToSmiles(node.state.mols[i])}\n"
+    route_summary += "###################### Target Molecule #####################\n"
+    logger.info(route_summary)
 
 
 
