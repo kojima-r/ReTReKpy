@@ -3,7 +3,7 @@ if tf.__version__.split(".")[0]=='2':
     import tensorflow.compat.v1 as tf
     tf.disable_v2_behavior()
     #import tensorflow.compat.v1.keras as K
-    K=tf.compat.v1.keras.backend
+    K=tf.compat.v1.keras
 else:
     import tensorflow.contrib.keras as K
 from kgcn import layers
