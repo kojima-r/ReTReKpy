@@ -17,7 +17,7 @@ from py4j.java_gateway import JavaGateway, GatewayParameters
 from rdkit import Chem, RDLogger
 
 from mcts_main import Mcts
-from mcts_modules import print_route, save_route
+from mcts_modules import print_route_HTML, save_route
 from model_modules import load_model, predict_templates
 from utils import *
 from preprocessing_modules import atom_features, build_data
@@ -265,7 +265,7 @@ def main():
             leaf_node = leaf_node.parent_node
         else:
             nodes.append(leaf_node)
-        print_route(nodes, is_proven, logger)
+        print_route_HTML(nodes, is_proven, logger)
         save_route(nodes, config['save_result_dir'], is_proven, config["knowledge_weights"])
     finally:
         if args.chem_axon:
